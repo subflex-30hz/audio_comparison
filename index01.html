@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blind Audio Test</title>
+  <script src="https://unpkg.com/wavesurfer.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2em;
+      max-width: 800px;
+      margin: auto;
+    }
+    .waveform-container {
+      margin-bottom: 2em;
+    }
+    .track-label {
+      font-weight: bold;
+      margin-bottom: 0.5em;
+    }
+    .track-select-button {
+      margin-top: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Blind Audio Test</h1>
+
+  <p>Lade bis zu 8 Audiodateien hoch (max. 50MB pro Datei):</p>
+  <input type="file" id="audioFiles" accept="audio/*" multiple />
+
+  <button onclick="startTest()">Test starten</button>
+
+  <div id="testSection" style="display:none;">
+    <h3>Tracks</h3>
+    <div id="waveformContainer"></div>
+
+    <h3>Wähle deinen Favoriten:</h3>
+    <div id="selectButtons"></div>
+
+    <p id="result"></p>
+  </div>
+
+  <script>
+    let fileMap = {};
+    let fileLabels = [];
+    let wavesurfers = {};
+
+    function startTest() {
+      const files = document.getElementById("audioFiles").files;
+
+      if (files.length < 2 || files.length > 8) {
+        alert("Bitte lade zwischen 2 und 8 Audiodateien hoch.");
+        return;
+      }
+
+      fileMap = {};
+      fileLabels = [];
+      wavesurfers = {};
+      const shuffled = Array.from(files).sort(() => 0.5 - Math.random());
+
+      for (let i = 0; i < shuffled.length; i++) {
+        if (shuffled[i].size > 50 * 1024 * 1024) {
+          alert(`Die Datei "${shuffled[i].name}" ist größer als 50MB.`);
+          return;
+        }
+        const label = `Track ${i + 1}`;
+        fileMap[label] = shuffled[i];
+        fileLabels.push(label);
+      }
+
+      createWaveforms();
+      createSelectButtons();
+      document.getElementById("testSection").style.display = "block";
+    }
+
+    function createWaveforms() {
+      const container = document.getElementById("waveformContainer");
+      container.innerHTML = "";
+
+      fileLabels.forEach(label => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "waveform-container";
+
+        const trackTitle = document.createElement("div");
+        trackTitle.className = "track-label";
+        trackTitle.textContent = label;
+        wrapper.appendChild(trackTitle);
+
+        const waveformDiv = document.createElement("div");
+        waveformDiv.id = `waveform-${label}`;
+        wrapper.appendChild(waveformDiv);
+
+        container.appendChild(wrapper);
+
+        const wavesurfer = WaveSurfer.create({
+          container: `#waveform-${label}`,
+          waveColor: '#999',
+          progressColor: '#333',
+          height: 64
+        });
+
+        const file = fileMap[label];
+        const url = URL.createObjectURL(file);
+        wavesurfer.load(url);
+
+        waveformDiv.addEventListener("click", () => {
+          wavesurfer.playPause();
+        });
+
+        wavesurfers[label] = wavesurfer;
+      });
+    }
+
+    function createSelectButtons() {
+      const selectDiv = document.getElementById("selectButtons");
+      selectDiv.innerHTML = "";
+
+      fileLabels.forEach(label => {
+        const selectBtn = document.createElement("button");
+        selectBtn.textContent = `Ich wähle ${label}`;
+        selectBtn.className = "track-select-button";
+        selectBtn.onclick = () => selectTrack(label);
+        selectDiv.appendChild(selectBtn);
+      });
+    }
+
+    function selectTrack(label) {
+      const chosenFile = fileMap[label].name;
+      document.getElementById("result").innerText = `Du hast ${label} gewählt. Datei: ${chosenFile}`;
+    }
+  </script>
+</body>
+</html>
