@@ -18,10 +18,6 @@
       padding: 1em;
       border-radius: 8px;
     }
-    .track-label {
-      font-weight: bold;
-      margin-bottom: 0.5em;
-    }
     .track-select-button {
       margin-top: 0.5em;
     }
@@ -96,14 +92,9 @@
         const wrapper = document.createElement("div");
         wrapper.className = "waveform-container";
 
-        const title = document.createElement("div");
-        title.className = "track-label";
-        title.innerText = label;
-
         const waveform = document.createElement("div");
         waveform.id = `waveform-${id}`;
 
-        wrapper.appendChild(title);
         wrapper.appendChild(waveform);
         container.appendChild(wrapper);
 
