@@ -49,9 +49,10 @@
     let fileMap = {};
     let fileLabels = [];
     let wavesurfers = {};
+    let currentPlaying = null;
 
     function sanitizeId(label) {
-      return label.replace(/\\s+/g, '-').replace(/[^a-zA-Z0-9\\-_]/g, '');
+      return label.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_]/g, '');
     }
 
     function startTest() {
@@ -65,12 +66,12 @@
       fileMap = {};
       fileLabels = [];
       wavesurfers = {};
+      currentPlaying = null;
       const shuffled = Array.from(files).sort(() => 0.5 - Math.random());
 
-      // prüfen & vorbereiten
       for (let i = 0; i < shuffled.length; i++) {
         if (shuffled[i].size > 50 * 1024 * 1024) {
-          alert(`Die Datei \"${shuffled[i].name}\" ist größer als 50MB.`);
+          alert(`Die Datei "${shuffled[i].name}" ist größer als 50MB.`);
           return;
         }
         const label = `Track ${i + 1}`;
@@ -115,7 +116,18 @@
         wavesurfer.load(url);
 
         waveform.addEventListener("click", () => {
-          wavesurfer.playPause();
+          // Stoppe vorherigen Track
+          if (currentPlaying && currentPlaying !== wavesurfer) {
+            currentPlaying.pause();
+          }
+
+          if (wavesurfer.isPlaying()) {
+            wavesurfer.pause();
+            currentPlaying = null;
+          } else {
+            wavesurfer.play();
+            currentPlaying = wavesurfer;
+          }
         });
 
         wavesurfers[label] = wavesurfer;
