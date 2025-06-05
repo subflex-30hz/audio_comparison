@@ -50,6 +50,7 @@
     let fileLabels = [];
     let wavesurfers = {};
     let currentPlaying = null;
+    let currentLabelIndex = -1;
 
     function sanitizeId(label) {
       return label.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_]/g, '');
@@ -67,6 +68,8 @@
       fileLabels = [];
       wavesurfers = {};
       currentPlaying = null;
+      currentLabelIndex = -1;
+
       const shuffled = Array.from(files).sort(() => 0.5 - Math.random());
 
       for (let i = 0; i < shuffled.length; i++) {
@@ -88,7 +91,7 @@
       const container = document.getElementById("waveformContainer");
       container.innerHTML = "";
 
-      fileLabels.forEach(label => {
+      fileLabels.forEach((label, index) => {
         const id = sanitizeId(label);
         const wrapper = document.createElement("div");
         wrapper.className = "waveform-container";
@@ -116,22 +119,32 @@
         wavesurfer.load(url);
 
         waveform.addEventListener("click", () => {
-          // Stoppe vorherigen Track
-          if (currentPlaying && currentPlaying !== wavesurfer) {
-            currentPlaying.pause();
-          }
-
-          if (wavesurfer.isPlaying()) {
-            wavesurfer.pause();
-            currentPlaying = null;
-          } else {
-            wavesurfer.play();
-            currentPlaying = wavesurfer;
-          }
+          togglePlay(index);
         });
 
         wavesurfers[label] = wavesurfer;
       });
+
+      document.addEventListener("keydown", handleKeyControls);
+    }
+
+    function togglePlay(index) {
+      const label = fileLabels[index];
+      const wavesurfer = wavesurfers[label];
+
+      if (currentPlaying && currentPlaying !== wavesurfer) {
+        currentPlaying.pause();
+      }
+
+      if (wavesurfer.isPlaying()) {
+        wavesurfer.pause();
+        currentPlaying = null;
+        currentLabelIndex = -1;
+      } else {
+        wavesurfer.play();
+        currentPlaying = wavesurfer;
+        currentLabelIndex = index;
+      }
     }
 
     function createSelectButtons() {
@@ -151,6 +164,39 @@
       const chosenFile = fileMap[label].name;
       document.getElementById("result").innerText =
         `Du hast ${label} gewählt. Datei: ${chosenFile}`;
+    }
+
+    function handleKeyControls(event) {
+      if (currentLabelIndex === -1) return;
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        togglePlay(currentLabelIndex);
+      }
+
+      if (event.code === "ArrowUp" && currentLabelIndex > 0) {
+        switchTrack(currentLabelIndex - 1);
+      }
+
+      if (event.code === "ArrowDown" && currentLabelIndex < fileLabels.length - 1) {
+        switchTrack(currentLabelIndex + 1);
+      }
+    }
+
+    function switchTrack(newIndex) {
+      const newLabel = fileLabels[newIndex];
+      const newSurfer = wavesurfers[newLabel];
+
+      if (!currentPlaying) return;
+
+      const currentTime = currentPlaying.getCurrentTime();
+      currentPlaying.pause();
+
+      newSurfer.seekTo(currentTime / newSurfer.getDuration());
+      newSurfer.play();
+
+      currentPlaying = newSurfer;
+      currentLabelIndex = newIndex;
     }
   </script>
 </body>
