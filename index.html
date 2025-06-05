@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Blind Audio Test</title>
   <script src="https://unpkg.com/wavesurfer.js"></script>
   <style>
@@ -14,6 +14,9 @@
     }
     .waveform-container {
       margin-bottom: 2em;
+      border: 1px solid #ccc;
+      padding: 1em;
+      border-radius: 8px;
     }
     .track-label {
       font-weight: bold;
@@ -27,7 +30,7 @@
 <body>
   <h1>Blind Audio Test</h1>
 
-  <p>Lade bis zu 8 Audiodateien hoch (max. 50MB pro Datei):</p>
+  <p>Lade bis zu 8 Audiodateien hoch (max. 50 MB pro Datei):</p>
   <input type="file" id="audioFiles" accept="audio/*" multiple />
 
   <button onclick="startTest()">Test starten</button>
@@ -47,6 +50,10 @@
     let fileLabels = [];
     let wavesurfers = {};
 
+    function sanitizeId(label) {
+      return label.replace(/\\s+/g, '-').replace(/[^a-zA-Z0-9\\-_]/g, '');
+    }
+
     function startTest() {
       const files = document.getElementById("audioFiles").files;
 
@@ -60,9 +67,10 @@
       wavesurfers = {};
       const shuffled = Array.from(files).sort(() => 0.5 - Math.random());
 
+      // prüfen & vorbereiten
       for (let i = 0; i < shuffled.length; i++) {
         if (shuffled[i].size > 50 * 1024 * 1024) {
-          alert(`Die Datei "${shuffled[i].name}" ist größer als 50MB.`);
+          alert(`Die Datei \"${shuffled[i].name}\" ist größer als 50MB.`);
           return;
         }
         const label = `Track ${i + 1}`;
@@ -80,32 +88,33 @@
       container.innerHTML = "";
 
       fileLabels.forEach(label => {
+        const id = sanitizeId(label);
         const wrapper = document.createElement("div");
         wrapper.className = "waveform-container";
 
-        const trackTitle = document.createElement("div");
-        trackTitle.className = "track-label";
-        trackTitle.textContent = label;
-        wrapper.appendChild(trackTitle);
+        const title = document.createElement("div");
+        title.className = "track-label";
+        title.innerText = label;
 
-        const waveformDiv = document.createElement("div");
-        waveformDiv.id = `waveform-${label}`;
-        wrapper.appendChild(waveformDiv);
+        const waveform = document.createElement("div");
+        waveform.id = `waveform-${id}`;
 
+        wrapper.appendChild(title);
+        wrapper.appendChild(waveform);
         container.appendChild(wrapper);
 
         const wavesurfer = WaveSurfer.create({
-          container: `#waveform-${label}`,
+          container: `#waveform-${id}`,
           waveColor: '#999',
-          progressColor: '#333',
-          height: 64
+          progressColor: '#0077cc',
+          height: 64,
         });
 
         const file = fileMap[label];
         const url = URL.createObjectURL(file);
         wavesurfer.load(url);
 
-        waveformDiv.addEventListener("click", () => {
+        waveform.addEventListener("click", () => {
           wavesurfer.playPause();
         });
 
@@ -114,21 +123,22 @@
     }
 
     function createSelectButtons() {
-      const selectDiv = document.getElementById("selectButtons");
-      selectDiv.innerHTML = "";
+      const container = document.getElementById("selectButtons");
+      container.innerHTML = "";
 
       fileLabels.forEach(label => {
-        const selectBtn = document.createElement("button");
-        selectBtn.textContent = `Ich wähle ${label}`;
-        selectBtn.className = "track-select-button";
-        selectBtn.onclick = () => selectTrack(label);
-        selectDiv.appendChild(selectBtn);
+        const button = document.createElement("button");
+        button.textContent = `Ich wähle ${label}`;
+        button.className = "track-select-button";
+        button.onclick = () => selectTrack(label);
+        container.appendChild(button);
       });
     }
 
     function selectTrack(label) {
       const chosenFile = fileMap[label].name;
-      document.getElementById("result").innerText = `Du hast ${label} gewählt. Datei: ${chosenFile}`;
+      document.getElementById("result").innerText =
+        `Du hast ${label} gewählt. Datei: ${chosenFile}`;
     }
   </script>
 </body>
