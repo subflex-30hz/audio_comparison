@@ -103,6 +103,8 @@
           waveColor: '#999',
           progressColor: '#0077cc',
           height: 64,
+          normalize: true,
+          backend: 'WebAudio'
         });
 
         const file = fileMap[label];
@@ -111,6 +113,31 @@
 
         waveform.addEventListener("click", () => {
           togglePlay(index);
+        });
+
+        // Looping am Trackende
+        wavesurfer.on('finish', () => {
+          wavesurfer.seekTo(0);
+          wavesurfer.play();
+        });
+
+        // Fade In
+        wavesurfer.on('play', () => {
+          const gainNode = wavesurfer.backend.getGainNode();
+          if (gainNode) {
+            gainNode.gain.setValueAtTime(0, wavesurfer.backend.ac.currentTime);
+            gainNode.gain.linearRampToValueAtTime(1, wavesurfer.backend.ac.currentTime + 0.5);
+          }
+        });
+
+        // Fade Out
+        wavesurfer.on('pause', () => {
+          const gainNode = wavesurfer.backend.getGainNode();
+          if (gainNode) {
+            gainNode.gain.cancelScheduledValues(wavesurfer.backend.ac.currentTime);
+            gainNode.gain.setValueAtTime(gainNode.gain.value, wavesurfer.backend.ac.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0, wavesurfer.backend.ac.currentTime + 0.5);
+          }
         });
 
         wavesurfers[label] = wavesurfer;
