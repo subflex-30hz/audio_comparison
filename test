@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Blind Audio Test</title>
+  <script src="https://unpkg.com/wavesurfer.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2em;
+      max-width: 800px;
+      margin: auto;
+    }
+    .waveform-container {
+      margin-bottom: 2em;
+      border: 1px solid #ccc;
+      padding: 1em;
+      border-radius: 8px;
+    }
+    .track-select-button {
+      margin-top: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Blind Audio Test</h1>
+
+  <p>Lade bis zu 8 Audiodateien hoch (max. 50 MB pro Datei):</p>
+  <input type="file" id="audioFiles" accept="audio/*" multiple />
+
+  <button onclick="startTest()">Test starten</button>
+
+  <div id="testSection" style="display:none;">
+    <h3>Tracks</h3>
+    <div id="waveformContainer"></div>
+
+    <h3>Wähle deinen Favoriten:</h3>
+    <div id="selectButtons"></div>
+
+    <p id="result"></p>
+  </div>
+
+  <script>
+    let fileMap = {};
+    let fileLabels = [];
+    let wavesurfers = {};
+    let currentPlaying = null;
+    let currentLabelIndex = -1;
+
+    function sanitizeId(label) {
+      return label.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_]/g, '');
+    }
+
+    function startTest() {
+      const files = document.getElementById("audioFiles").files;
+      if (files.length < 2 || files.length > 8) {
+        alert("Bitte lade zwischen 2 und 8 Audiodateien hoch.");
+        return;
+      }
+
+      fileMap = {};
+      fileLabels = [];
+      wavesurfers = {};
+      currentPlaying = null;
+      currentLabelIndex = -1;
+
+      const shuffled = Array.from(files).sort(() => 0.5 - Math.random());
+
+      for (let i = 0; i < shuffled.length; i++) {
+        if (shuffled[i].size > 50 * 1024 * 1024) {
+          alert(`Die Datei "${shuffled[i].name}" ist größer als 50MB.`);
+          return;
+        }
+        const label = `Track ${i + 1}`;
+        fileMap[label] = shuffled[i];
+        fileLabels.push(label);
+      }
+
+      createWaveforms();
+      createSelectButtons();
+      document.getElementById("testSection").style.display = "block";
+    }
+
+    function createWaveforms() {
+      const container = document.getElementById("waveformContainer");
+      container.innerHTML = "";
+
+      fileLabels.forEach((label, index) => {
+        const id = sanitizeId(label);
+        const wrapper = document.createElement("div");
+        wrapper.className = "waveform-container";
+
+        const waveform = document.createElement("div");
+        waveform.id = `waveform-${id}`;
+        wrapper.appendChild(waveform);
+        container.appendChild(wrapper);
+
+        const wavesurfer = WaveSurfer.create({
+          container: `#waveform-${id}`,
+          waveColor: '#999',
+          progressColor: '#0077cc',
+          height: 64,
+          normalize: true,
+          backend: 'WebAudio',
+          cursorColor: '#333'
+        });
+
+        const file = fileMap[label];
+        const url = URL.createObjectURL(file);
+        wavesurfer.load(url);
+
+        waveform.addEventListener("click", () => {
+          togglePlay(index);
+        });
+
+        // Loop
+        wavesurfer.on('finish', () => {
+          wavesurfer.seekTo(0);
+          wavesurfer.play();
+        });
+
+        // Fade In
+        wavesurfer.on('play', () => {
+          const gainNode = wavesurfer.backend.getGainNode();
+          if (gainNode) {
+            const now = wavesurfer.backend.ac.currentTime;
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(1, now + 0.5);
+          }
+        });
+
+        // Fade Out
+        wavesurfer.on('pause', () => {
+          const gainNode = wavesurfer.backend.getGainNode();
+          if (gainNode) {
+            const now = wavesurfer.backend.ac.currentTime;
+            gainNode.gain.cancelScheduledValues(now);
+            gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+            gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
+          }
+        });
+
+        wavesurfers[label] = wavesurfer;
+      });
+
+      document.addEventListener("keydown", handleKeyControls);
+    }
+
+    function togglePlay(index) {
+      const label = fileLabels[index];
+      const wavesurfer = wavesurfers[label];
+
+      if (currentPlaying && currentPlaying !== wavesurfer) {
+        currentPlaying.pause();
+      }
+
+      if (wavesurfer.isPlaying()) {
+        wavesurfer.pause();
+        currentPlaying = null;
+        currentLabelIndex = -1;
+      } else {
+        wavesurfer.play();
+        currentPlaying = wavesurfer;
+        currentLabelIndex = index;
+      }
+    }
+
+    function createSelectButtons() {
+      const container = document.getElementById("selectButtons");
+      container.innerHTML = "";
+
+      fileLabels.forEach(label => {
+        const button = document.createElement("button");
+        button.textContent = `Ich wähle ${label}`;
+        button.className = "track-select-button";
+        button.onclick = () => selectTrack(label);
+        container.appendChild(button);
+      });
+    }
+
+    function selectTrack(label) {
+      const chosenFile = fileMap[label].name;
+      document.getElementById("result").innerText =
+        `Du hast ${label} gewählt. Datei: ${chosenFile}`;
+    }
+
+    function handleKeyControls(event) {
+      const tag = event.target.tagName.toLowerCase();
+      if (["input", "textarea", "select", "button"].includes(tag)) return;
+      if (currentLabelIndex === -1) return;
+
+      const wavesurfer = wavesurfers[fileLabels[currentLabelIndex]];
+      if (!wavesurfer) return;
+
+      switch (event.code) {
+        case "Space":
+          event.preventDefault();
+          wavesurfer.isPlaying() ? wavesurfer.pause() : wavesurfer.play();
+          break;
+
+        case "ArrowLeft":
+          event.preventDefault();
+          wavesurfer.setTime(Math.max(0, wavesurfer.getCurrentTime() - 5));
+          break;
+
+        case "ArrowRight":
+          event.preventDefault();
+          wavesurfer.setTime(Math.min(wavesurfer.getDuration(), wavesurfer.getCurrentTime() + 5));
+          break;
+
+        case "ArrowUp":
+          event.preventDefault();
+          if (currentLabelIndex > 0) switchTrack(currentLabelIndex - 1);
+          break;
+
+        case "ArrowDown":
+          event.preventDefault();
+          if (currentLabelIndex < fileLabels.length - 1) switchTrack(currentLabelIndex + 1);
+          break;
+      }
+    }
+
+    function switchTrack(newIndex) {
+      const newLabel = fileLabels[newIndex];
+      const newSurfer = wavesurfers[newLabel];
+
+      if (!currentPlaying) return;
+
+      const currentTime = currentPlaying.getCurrentTime();
+      currentPlaying.pause();
+
+      newSurfer.seekTo(currentTime / newSurfer.getDuration());
+      newSurfer.play();
+
+      currentPlaying = newSurfer;
+      currentLabelIndex = newIndex;
+    }
+  </script>
+</body>
+</html>
