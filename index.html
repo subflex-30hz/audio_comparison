@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Blind Audio Test v0.013</title>
+  <title>Blind Audio Test</title>
   <script src="https://unpkg.com/wavesurfer.js"></script>
   <style>
     body {
@@ -54,6 +54,7 @@
 
     function startTest() {
       const files = document.getElementById("audioFiles").files;
+
       if (files.length < 2 || files.length > 8) {
         alert("Bitte lade zwischen 2 und 8 Audiodateien hoch.");
         return;
@@ -102,8 +103,6 @@
           waveColor: '#999',
           progressColor: '#0077cc',
           height: 64,
-          normalize: true,
-          backend: 'WebAudio'
         });
 
         const file = fileMap[label];
@@ -112,30 +111,6 @@
 
         waveform.addEventListener("click", () => {
           togglePlay(index);
-        });
-
-        // Loop + FadeIn/FadeOut
-        wavesurfer.on('finish', () => {
-          wavesurfer.seekTo(0);
-          wavesurfer.play();
-        });
-
-        wavesurfer.on('play', () => {
-          const gainNode = wavesurfer.backend.getGainNode();
-          if (gainNode) {
-            gainNode.gain.setValueAtTime(0, wavesurfer.backend.ac.currentTime);
-            gainNode.gain.linearRampToValueAtTime(1, wavesurfer.backend.ac.currentTime + 0.5);
-          }
-        });
-
-        wavesurfer.on('pause', () => {
-          const gainNode = wavesurfer.backend.getGainNode();
-          if (gainNode) {
-            const now = wavesurfer.backend.ac.currentTime;
-            gainNode.gain.cancelScheduledValues(now);
-            gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-            gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
-          }
         });
 
         wavesurfers[label] = wavesurfer;
@@ -183,7 +158,6 @@
     }
 
     function handleKeyControls(event) {
-      if (document.activeElement !== document.body) return;
       if (currentLabelIndex === -1) return;
 
       const wavesurfer = wavesurfers[fileLabels[currentLabelIndex]];
@@ -192,27 +166,38 @@
       switch (event.code) {
         case "Space":
           event.preventDefault();
-          wavesurfer.isPlaying() ? wavesurfer.pause() : wavesurfer.play();
+          if (wavesurfer.isPlaying()) {
+            wavesurfer.pause();
+          } else {
+            wavesurfer.play();
+          }
           break;
 
         case "ArrowLeft":
           event.preventDefault();
-          wavesurfer.setTime(Math.max(0, wavesurfer.getCurrentTime() - 5));
+          let newTimeLeft = Math.max(0, wavesurfer.getCurrentTime() - 5);
+          wavesurfer.setTime(newTimeLeft);
           break;
 
         case "ArrowRight":
           event.preventDefault();
-          wavesurfer.setTime(Math.min(wavesurfer.getDuration(), wavesurfer.getCurrentTime() + 5));
+          let newTimeRight = Math.min(
+            wavesurfer.getDuration(),
+            wavesurfer.getCurrentTime() + 5
+          );
+          wavesurfer.setTime(newTimeRight);
           break;
 
         case "ArrowUp":
-          event.preventDefault();
-          if (currentLabelIndex > 0) switchTrack(currentLabelIndex - 1);
+          if (currentLabelIndex > 0) {
+            switchTrack(currentLabelIndex - 1);
+          }
           break;
 
         case "ArrowDown":
-          event.preventDefault();
-          if (currentLabelIndex < fileLabels.length - 1) switchTrack(currentLabelIndex + 1);
+          if (currentLabelIndex < fileLabels.length - 1) {
+            switchTrack(currentLabelIndex + 1);
+          }
           break;
       }
     }
