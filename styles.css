@@ -1,0 +1,40 @@
+
+body {
+    font-family: Courier New, Consolas, Lucida Console, Menlo, monospace;
+    color: #1F2421;
+    padding: 2em;
+    max-width: 1000px;
+    margin: auto;
+  }
+  .waveform-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2em;
+    border: 0px solid #DCE1DE;
+    padding: 1em;
+    border-radius: 4px;
+  }
+  .waveform-box {
+    flex: 1;
+  }
+  .rating {
+    margin-left: 1em;
+    user-select: none;
+  }
+  .star {
+    cursor: pointer;
+    font-size: 1.5em;
+    color: #9CC5A1;
+    margin-right: 0.2em;
+  }
+  .star.selected {
+    color: #216869;
+  }
+  .reveal-button {
+    margin-top: 1em;
+    padding: 0.5em 1em;
+    font-size: 1em;
+  }
+  #resultsContainer {
+    margin-top: 1.5em;
+  }
