@@ -1,27 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ABC Tool</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="https://unpkg.com/wavesurfer.js"></script>
 </head>
+
 <body>
   <p>[A]udio [B]lind [C]omparison Tool</p>
-  <p>Please upload up to 8 audio files to compare (max. 50 MB each):</p>
+  <p>Please upload up to 8 audio files to compare (max. 400 MB each):</p>
   <input type="file" id="audioFiles" accept="audio/*" multiple />
+  <label for="roundsSelect">Compare Rounds (max. 5)</label>
+  <select id="roundsSelect">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="4">4</option>
+    <option value="5">5</option>
+  </select>
 
   <button id="startBtn">Start</button>
 
   <div id="testSection" style="display:none;">
- 
-    <p>Please click in the track you want to listen to. Please try ⬆, ⬇, ⬅, ➡ and spacebar to navigate.</p>
+
+    <p>Please click in the track you want to listen to. Please try ⬆, ⬇, ⬅, ⮕ and spacebar to navigate.</p>
     <div id="waveformContainer"></div>
 
-    <button class="reveal-button" id="revealBtn">Reveal Result</button>
+    <button class="reveal-button" id="revealBtn"></button>
     <div id="resultsContainer"></div>
-      <p>v0.7 | © Bertram Zimmermann</p>
+    <p>v0.71 | © Bertram Zimmermann</p>
   </div>
 
   <script>
@@ -31,9 +41,42 @@
     let currentPlaying = null;
     let currentLabelIndex = -1;
     let ratings = {};
+    let totalRounds = 1;
+    let currentRound = 1;
+    // ratingsPerRound: Array von Objekten: [{ Track 1: 0, … }, …]
+let ratingsPerRound = [];
+
+function updateRevealButtonText() {
+  const btn = document.getElementById('revealBtn');
+  if (currentRound < totalRounds) {
+    btn.innerText = `Nächster Durchgang (${currentRound}/${totalRounds})`;
+  } else {
+    btn.innerText = totalRounds === 1
+      ? 'Reveal Result'
+      : 'Reveal Final Result';
+  }
+}
 
     function sanitizeId(label) {
       return label.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_]/g, '');
+    }
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    // Derangement: shuffle so that no element remains in its original position
+    function derangeArray(array) {
+      const original = array.slice();
+      let arr;
+      do {
+        arr = array.slice();
+        shuffleArray(arr);
+      } while (arr.some((value, index) => value === original[index]));
+      return arr;
     }
 
     function startTest() {
@@ -52,12 +95,16 @@
       currentPlaying = null;
       currentLabelIndex = -1;
       ratings = {};
-
-      const shuffled = Array.from(files).sort(() => 0.5 - Math.random());
+      totalRounds = Math.min(5, parseInt(document.getElementById('roundsSelect').value, 10));
+      currentRound = 1;
+      ratingsPerRound = [];
+      // Deranged shuffle for round 1: prevent any file from staying in its alphanumeric order position
+      const sortedFiles = Array.from(files).sort((a, b) => a.name.localeCompare(b.name));
+      let shuffled = derangeArray(sortedFiles);
 
       for (let i = 0; i < shuffled.length; i++) {
-        if (shuffled[i].size > 50 * 1024 * 1024) {
-          alert(`The file "${shuffled[i].name}" is larger than 50 MB.`);
+        if (shuffled[i].size > 400 * 1024 * 1024) {
+          alert(`The file "${shuffled[i].name}" is larger than 400 MB.`);
           return;
         }
         const label = `Track ${i + 1}`;
@@ -65,10 +112,14 @@
         fileLabels.push(label);
         ratings[label] = 0;
       }
+      // für Runde 1 die Ratings initialisieren
+      ratings = {};
+      fileLabels.forEach(label => ratings[label] = 0);
 
       createWaveforms();
       console.log("   Waveforms created, showing testSection.");
       document.getElementById("testSection").style.display = "block";
+      updateRevealButtonText();
     }
 
     function createWaveforms() {
@@ -235,27 +286,76 @@
     }
 
     function revealResults() {
-      console.log("→ revealResults() called");
-      const resultsDiv = document.getElementById("resultsContainer");
-      resultsDiv.innerHTML = ""; // clear previous
+      // 1. Speichere aktuelle Ratings
+      ratingsPerRound.push({ ...ratings });
 
-      // Build an array of { filename, label, rating } objects
-      const entries = fileLabels.map(label => ({
+      // 2. Wenn noch nicht alle Runden sind, starte nächsten Durchgang
+      if (currentRound < totalRounds) {
+        currentRound++;
+
+        // Ratings für neue Runde leeren
+        ratings = {};
+        fileLabels.forEach(label => ratings[label] = 0);
+
+        // Sterne-UI zurücksetzen
+        document.querySelectorAll('.star').forEach(star => {
+          star.classList.remove('selected');
+          star.innerHTML = '☆';
+        });
+
+        // Ergebnisse der letzten Runde verbergen
+        document.getElementById("resultsContainer").innerHTML = '';
+
+        // Tracks neu mischen
+        shuffleArray(fileLabels);
+
+        // Waveforms neu erstellen (zieht jetzt die neu gemischten fileLabels)
+        createWaveforms();
+
+        // Button-Text anpassen
+        if (currentRound === totalRounds) {
+          document.getElementById("revealBtn").innerText = 'Reveal Final Result';
+        } else {
+          document.getElementById("revealBtn").innerText =
+            `Nächster Durchgang (${currentRound}/${totalRounds})`;
+        }
+
+        return;
+      }
+
+      // Wenn alle Runden durch, aggregate Ergebnisse
+      const aggregate = {};
+      // init aggregate
+      fileLabels.forEach(label => aggregate[label] = 0);
+      // aufsummieren
+      ratingsPerRound.forEach(roundRatings => {
+        for (let label in roundRatings) {
+          aggregate[label] += roundRatings[label];
+        }
+      });
+      // durchschnitt pro Track
+      const avgRatings = fileLabels.map(label => ({
         filename: fileMap[label].name,
-        label: label,
-        rating: ratings[label] || 0
+        avg: (aggregate[label] / totalRounds).toFixed(2)
       }));
+      // sortieren nach Dateiname
+      avgRatings.sort((a, b) => a.filename.localeCompare(b.filename));
 
-      // Sort alphabetically by filename
-      entries.sort((a, b) => a.filename.localeCompare(b.filename));
+      // Anzeige leeren
+      const resultsDiv = document.getElementById("resultsContainer");
+      resultsDiv.innerHTML = '';
 
-      // Display sorted results
-      entries.forEach(entry => {
-        const starDisplay = "★".repeat(entry.rating) + "☆".repeat(5 - entry.rating);
+      // anzeigen
+      avgRatings.forEach(entry => {
+        const starsFull = Math.round(entry.avg);
+        const starDisplay = '★'.repeat(starsFull) + '☆'.repeat(5 - starsFull);
         const div = document.createElement("div");
-        div.innerText = `File: ${entry.filename} ➡ Rating: ${starDisplay}`;
+        div.innerText = `File: ${entry.filename} ➡ Avg Rating: ${entry.avg} (${starDisplay})`;
         resultsDiv.appendChild(div);
       });
+
+      // Button ggf. deaktivieren
+      document.getElementById("revealBtn").disabled = true;
     }
 
     // Bind event listeners after functions are defined
@@ -263,4 +363,5 @@
     document.getElementById("revealBtn").addEventListener("click", revealResults);
   </script>
 </body>
+
 </html>
