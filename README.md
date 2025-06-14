@@ -6,7 +6,7 @@ An easy and user oriented way to A/B compare audio files by listening to them wi
 
 HOW is it working:
 
-You're able to upload (RAM) up to 8 files in your browser
+You're able to upload (RAM) up to 8 files in your browser.
   File size limited to 400MB to secure flawless working even with a 8GB RAM system
 If you hit "START", the files will be randomized in order and displayed with their waveforms.
 You can jump around and listen by using the arrow keys. Start/Stop with spacebar.
