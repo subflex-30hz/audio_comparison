@@ -43,13 +43,13 @@
     let ratings = {};
     let totalRounds = 1;
     let currentRound = 1;
-    // ratingsPerRound: Array von Objekten: [{ Track 1: 0, … }, …]
+    // ratingsPerRound: array of objects: [{ Track 1: 0, … }, …]
 let ratingsPerRound = [];
 
 function updateRevealButtonText() {
   const btn = document.getElementById('revealBtn');
   if (currentRound < totalRounds) {
-    btn.innerText = `Nächster Durchgang (${currentRound}/${totalRounds})`;
+    btn.innerText = `Next Round (${currentRound}/${totalRounds})`;
   } else {
     btn.innerText = totalRounds === 1
       ? 'Reveal Result'
@@ -112,7 +112,7 @@ function updateRevealButtonText() {
         fileLabels.push(label);
         ratings[label] = 0;
       }
-      // für Runde 1 die Ratings initialisieren
+      // initialize ratings for round 1
       ratings = {};
       fileLabels.forEach(label => ratings[label] = 0);
 
@@ -286,66 +286,60 @@ function updateRevealButtonText() {
     }
 
     function revealResults() {
-      // 1. Speichere aktuelle Ratings
+      // 1. save current ratings
       ratingsPerRound.push({ ...ratings });
 
-      // 2. Wenn noch nicht alle Runden sind, starte nächsten Durchgang
+      // 2. if not all rounds completed, start next round
       if (currentRound < totalRounds) {
         currentRound++;
 
-        // Ratings für neue Runde leeren
+        // clear ratings for the new round
         ratings = {};
         fileLabels.forEach(label => ratings[label] = 0);
 
-        // Sterne-UI zurücksetzen
+        // reset star UI
         document.querySelectorAll('.star').forEach(star => {
           star.classList.remove('selected');
           star.innerHTML = '☆';
         });
 
-        // Ergebnisse der letzten Runde verbergen
+        // hide last round's results
         document.getElementById("resultsContainer").innerHTML = '';
 
-        // Tracks neu mischen
+        // reshuffle tracks
         shuffleArray(fileLabels);
 
-        // Waveforms neu erstellen (zieht jetzt die neu gemischten fileLabels)
+        // recreate waveforms (using reshuffled fileLabels)
         createWaveforms();
 
-        // Button-Text anpassen
-        if (currentRound === totalRounds) {
-          document.getElementById("revealBtn").innerText = 'Reveal Final Result';
-        } else {
-          document.getElementById("revealBtn").innerText =
-            `Next round (${currentRound}/${totalRounds})`;
-        }
+        updateRevealButtonText();
 
         return;
       }
 
-      // Wenn alle Runden durch, aggregate Ergebnisse
+      // aggregate results if all rounds completed
       const aggregate = {};
-      // init aggregate
+      // initialize aggregate
       fileLabels.forEach(label => aggregate[label] = 0);
-      // aufsummieren
+      // sum up ratings
       ratingsPerRound.forEach(roundRatings => {
         for (let label in roundRatings) {
           aggregate[label] += roundRatings[label];
         }
       });
-      // durchschnitt pro Track
+      // calculate average per track
       const avgRatings = fileLabels.map(label => ({
         filename: fileMap[label].name,
         avg: (aggregate[label] / totalRounds).toFixed(2)
       }));
-      // sortieren nach Dateiname
+      // sort by filename
       avgRatings.sort((a, b) => a.filename.localeCompare(b.filename));
 
-      // Anzeige leeren
+      // clear display
       const resultsDiv = document.getElementById("resultsContainer");
       resultsDiv.innerHTML = '';
 
-      // anzeigen
+      // display results
       avgRatings.forEach(entry => {
         const starsFull = Math.round(entry.avg);
         const starDisplay = '★'.repeat(starsFull) + '☆'.repeat(5 - starsFull);
@@ -354,7 +348,7 @@ function updateRevealButtonText() {
         resultsDiv.appendChild(div);
       });
 
-      // Button ggf. deaktivieren
+      // disable button if necessary
       document.getElementById("revealBtn").disabled = true;
     }
 
